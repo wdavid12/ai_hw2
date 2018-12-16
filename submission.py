@@ -82,7 +82,7 @@ def betterEvaluationFunction(gameState):
   ghost_dists = [util.manhattanDistance(pacmanState.getPosition(), ghost) for ghost in ghosts]
   min_ghost_dist = min(ghost_dists)
 
-  return 2*gameState.getScore() + (-20)*(gameState.getNumFood()) + (-2)*(min(food_dists)) + min_ghost_dist
+  return 3*gameState.getScore() + (-20)*(gameState.getNumFood()) + (-2)*(min(food_dists)) + min_ghost_dist
 
 
 #     ********* MultiAgent Search Agents- sections c,d,e,f*********
