@@ -1,4 +1,5 @@
 import random, util
+import math
 from game import Agent
 
 #     ********* Reflex agent- sections a and b *********
@@ -37,7 +38,7 @@ class ReflexAgent(Agent):
     and returns a number, where higher numbers are better.
     """
     successorGameState = currentGameState.generatePacmanSuccessor(action)
-    return scoreEvaluationFunction(successorGameState)
+    return betterEvaluationFunction(successorGameState)
 
 
 #     ********* Evaluation functions *********
@@ -67,6 +68,27 @@ def betterEvaluationFunction(gameState):
   gameState.getScore():
   The GameState class is defined in pacman.py and you might want to look into that for other helper methods.
   """
+  if gameState.isWin():
+      return 10000
+  if gameState.isLose():
+      return -1000
+
+  pacmanState = gameState.getPacmanState()
+
+  grid = gameState.getFood()
+  size = grid.width * grid.height
+
+  max_dist = grid.width + grid.height
+
+  food_items = gameState.getFood().asList()
+  food_dists = [util.manhattanDistance(pacmanState.getPosition(), item) for item in food_items]
+
+  ghosts = gameState.getGhostPositions()
+  ghost_dists = [util.manhattanDistance(pacmanState.getPosition(), ghost) for ghost in ghosts]
+  min_ghost_dist = min(ghost_dists)
+
+  return gameState.getScore() + (size-gameState.getNumFood()) + (max_dist-min(food_dists)) + min_ghost_dist
+
 
 #     ********* MultiAgent Search Agents- sections c,d,e,f*********
 
@@ -97,6 +119,24 @@ class MinimaxAgent(MultiAgentSearchAgent):
   """
     Your minimax agent
   """
+  def minimax(self, gameState, depth, agentIndex):
+      if depth == 0 or gameState.isWin() or gameState.isLose():
+          return self.evaluationFunction(gameState)
+
+      actions = gameState.getLegalActions(agentIndex)
+      successors = [gameState.generateSuccessor(agentIndex, action) for action in actions]
+
+      nextAgent = (agentIndex + 1) % gameState.getNumAgents()
+      nextDepth = depth
+      if agentIndex == (gameState.getNumAgents()-1):
+          nextDepth = depth-1
+
+      scores = [self.minimax(state, nextDepth, nextAgent) for state in successors]
+
+      if agentIndex == 0:
+          return max(scores)
+      else:
+          return min(scores)
 
   def getAction(self, gameState):
     """
@@ -132,10 +172,17 @@ class MinimaxAgent(MultiAgentSearchAgent):
         The depth to which search should continue
 
     """
+    actions = gameState.getLegalActions(0)
+    successors = [gameState.generateSuccessor(0, action) for action in actions]
+    scores = [self.minimax(state,self.depth,0) for state in successors]
 
-    # BEGIN_YOUR_CODE
-    raise Exception("Not implemented yet")
-    # END_YOUR_CODE
+    bestScore = max(scores)
+    bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
+    chosenIndex = random.choice(bestIndices) # Pick randomly among the best
+
+    return actions[chosenIndex]
+
+
 
 ######################################################################################
 # d: implementing alpha-beta
@@ -144,15 +191,49 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
   """
     Your minimax agent with alpha-beta pruning
   """
+  def alpha_beta(self, gameState, depth, agentIndex, alpha, beta):
+    if depth == 0 or gameState.isWin() or gameState.isLose():
+      return self.evaluationFunction(gameState)
+
+    nextAgent = (agentIndex + 1) % gameState.getNumAgents()
+    nextDepth = depth
+    if agentIndex == (gameState.getNumAgents()-1):
+      nextDepth = depth-1
+
+    if agentIndex == 0:
+      cur_max = -math.inf
+      for action in gameState.getLegalActions(agentIndex):
+        successor = gameState.generateSuccessor(agentIndex, action)
+        score = self.alpha_beta(successor, nextDepth, nextAgent, alpha, beta)
+        cur_max = max(score, cur_max)
+        alpha = max(alpha, cur_max)
+        if cur_max >= beta:
+          return math.inf
+      return cur_max
+    else:
+      cur_min = math.inf
+      for action in gameState.getLegalActions(agentIndex):
+        successor = gameState.generateSuccessor(agentIndex, action)
+        score = self.alpha_beta(successor, nextDepth, nextAgent, alpha, beta)
+        cur_min = min(score, cur_min)
+        beta = min(beta, cur_min)
+        if alpha >= cur_min:
+          return -math.inf
+      return cur_min
 
   def getAction(self, gameState):
     """
       Returns the minimax action using self.depth and self.evaluationFunction
     """
+    actions = gameState.getLegalActions(0)
+    successors = [gameState.generateSuccessor(0, action) for action in actions]
+    scores = [self.alpha_beta(state,self.depth,0,-math.inf,math.inf) for state in successors]
 
-    # BEGIN_YOUR_CODE
-    raise Exception("Not implemented yet")
-    # END_YOUR_CODE
+    bestScore = max(scores)
+    bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
+    chosenIndex = random.choice(bestIndices) # Pick randomly among the best
+
+    return actions[chosenIndex]
 
 ######################################################################################
 # e: implementing random expectimax
