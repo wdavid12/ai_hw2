@@ -1,6 +1,33 @@
 import random, util
 import math
 from game import Agent
+import ghostAgents
+import time
+
+class FuncTimer:
+  def __init__(self):
+    self.times = {}
+
+  def timed(self, name):
+    self.times[name] = []
+    def decorator(func):
+      def wrapper(*args, **kwargs):
+        begin = time.time()
+        result = func(*args, **kwargs)
+        end = time.time()
+        self.times[name].append(end-begin)
+        return result
+      return wrapper
+    return decorator
+
+  def get_avg(self, name):
+    return sum(self.times[name]) / len(self.times[name])
+
+  def reset(self):
+    for k in self.times:
+      self.times[k] = []
+
+funcTimer = FuncTimer()
 
 #     ********* Reflex agent- sections a and b *********
 class ReflexAgent(Agent):
@@ -13,6 +40,46 @@ class ReflexAgent(Agent):
     self.dc = None
 
 
+  @funcTimer.timed('ReflexAgent')
+  def getAction(self, gameState):
+    """
+    getAction chooses among the best options according to the evaluation function.
+
+    getAction takes a GameState and returns some Directions.X for some X in the set {North, South, West, East, Stop}
+    ------------------------------------------------------------------------------
+    """
+    # Collect legal moves and successor states
+    legalMoves = gameState.getLegalActions()
+
+    # Choose one of the best actions
+    scores = [self.evaluationFunction(gameState, action) for action in legalMoves]
+    bestScore = max(scores)
+    bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
+    chosenIndex = random.choice(bestIndices) # Pick randomly among the best
+
+
+    return legalMoves[chosenIndex]
+
+  def evaluationFunction(self, currentGameState, action):
+    """
+    The evaluation function takes in the current GameState (pacman.py) and the proposed action
+    and returns a number, where higher numbers are better.
+    """
+    successorGameState = currentGameState.generatePacmanSuccessor(action)
+    return scoreEvaluationFunction(successorGameState)
+
+# TODO: delete me
+class BetterAgent(Agent):
+  """
+    A reflex agent chooses an action at each choice point by examining
+    its alternatives via a state evaluation function.
+  """
+  def __init__(self):
+    self.lastPositions = []
+    self.dc = None
+
+
+  @funcTimer.timed('BetterAgent')
   def getAction(self, gameState):
     """
     getAction chooses among the best options according to the evaluation function.
@@ -39,7 +106,6 @@ class ReflexAgent(Agent):
     """
     successorGameState = currentGameState.generatePacmanSuccessor(action)
     return betterEvaluationFunction(successorGameState)
-
 
 #     ********* Evaluation functions *********
 
@@ -69,18 +135,19 @@ def betterEvaluationFunction(gameState):
   The GameState class is defined in pacman.py and you might want to look into that for other helper methods.
   """
   if gameState.isWin():
-      return 10000
+      return 1000000
   if gameState.isLose():
       return -10000
 
   pacmanState = gameState.getPacmanState()
 
+  # cannot be empty, since game has not been won
   food_items = gameState.getFood().asList()
   food_dists = [util.manhattanDistance(pacmanState.getPosition(), item) for item in food_items]
 
   ghosts = gameState.getGhostPositions()
   ghost_dists = [util.manhattanDistance(pacmanState.getPosition(), ghost) for ghost in ghosts]
-  min_ghost_dist = min(ghost_dists)
+  min_ghost_dist = min(ghost_dists) if len(ghosts) > 0 else 0
 
   return 3*gameState.getScore() + (-20)*(gameState.getNumFood()) + (-2)*(min(food_dists)) + min_ghost_dist
 
@@ -133,6 +200,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
     else:
       return min(scores)
 
+  @funcTimer.timed('MinimaxAgent')
   def getAction(self, gameState):
     """
       Returns the minimax action from the current gameState using self.depth
@@ -216,6 +284,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
           return -math.inf
       return cur_min
 
+  @funcTimer.timed('AlphaBetaAgent')
   def getAction(self, gameState):
     """
       Returns the minimax action using self.depth and self.evaluationFunction
@@ -237,16 +306,41 @@ class RandomExpectimaxAgent(MultiAgentSearchAgent):
   """
     Your expectimax agent
   """
+  def expectimax(self, gameState, depth, agentIndex):
+    if depth == 0 or gameState.isWin() or gameState.isLose():
+      return self.evaluationFunction(gameState)
 
+    actions = gameState.getLegalActions(agentIndex)
+    successors = [gameState.generateSuccessor(agentIndex, action) for action in actions]
+
+    nextAgent = (agentIndex + 1) % gameState.getNumAgents()
+    nextDepth = depth
+    if agentIndex == (gameState.getNumAgents()-1):
+      nextDepth = depth-1
+
+    scores = [self.expectimax(state, nextDepth, nextAgent) for state in successors]
+
+    if agentIndex == 0:
+      return max(scores)
+    else:
+      return sum(scores)/len(scores)
+
+  @funcTimer.timed('RandomExpectimaxAgent')
   def getAction(self, gameState):
     """
       Returns the expectimax action using self.depth and self.evaluationFunction
       All ghosts should be modeled as choosing uniformly at random from their legal moves.
     """
+    actions = gameState.getLegalActions(0)
+    successors = [gameState.generateSuccessor(0, action) for action in actions]
+    scores = [self.expectimax(state, self.depth, 1) for state in successors]
 
-    # BEGIN_YOUR_CODE
-    raise Exception("Not implemented yet")
-    # END_YOUR_CODE
+    bestScore = max(scores)
+    bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
+    chosenIndex = random.choice(bestIndices) # Pick randomly among the best
+
+    return actions[chosenIndex]
+
 
 ######################################################################################
 # f: implementing directional expectimax
@@ -255,16 +349,47 @@ class DirectionalExpectimaxAgent(MultiAgentSearchAgent):
   """
     Your expectimax agent
   """
+  def expectimax(self, gameState, depth, agentIndex):
+    if depth == 0 or gameState.isWin() or gameState.isLose():
+      return self.evaluationFunction(gameState)
 
+    nextAgent = (agentIndex + 1) % gameState.getNumAgents()
+    nextDepth = depth
+    if agentIndex == (gameState.getNumAgents()-1):
+      nextDepth = depth-1
+
+    if agentIndex == 0:
+      actions = gameState.getLegalActions(agentIndex)
+      successors = [gameState.generateSuccessor(agentIndex, action) for action in actions]
+      scores = [self.expectimax(state, nextDepth, nextAgent) for state in successors]
+      return max(scores)
+    else:
+      weighted_average = 0.0
+      ghost = ghostAgents.DirectionalGhost(agentIndex)
+      dist = ghost.getDistribution(gameState)
+      for action, prob in dist.items():
+        successor = gameState.generateSuccessor(agentIndex, action)
+        score = self.expectimax(successor, nextDepth, nextAgent)
+        weighted_average += prob*score
+      return weighted_average
+
+
+  @funcTimer.timed('DirectionalExpectimaxAgent')
   def getAction(self, gameState):
     """
       Returns the expectimax action using self.depth and self.evaluationFunction
       All ghosts should be modeled as using the DirectionalGhost distribution to choose from their legal moves.
     """
 
-    # BEGIN_YOUR_CODE
-    raise Exception("Not implemented yet")
-    # END_YOUR_CODE
+    actions = gameState.getLegalActions(0)
+    successors = [gameState.generateSuccessor(0, action) for action in actions]
+    scores = [self.expectimax(state, self.depth, 1) for state in successors]
+
+    bestScore = max(scores)
+    bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
+    chosenIndex = random.choice(bestIndices) # Pick randomly among the best
+
+    return actions[chosenIndex]
 
 
 ######################################################################################

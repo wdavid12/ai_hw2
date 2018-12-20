@@ -34,6 +34,9 @@ from util import manhattanDistance
 import util, layout
 import sys, types, time, random, os
 
+from submission import funcTimer
+from collections import namedtuple, defaultdict
+
 ###################################################
 # YOUR INTERFACE TO THE PACMAN WORLD: A GameState #
 ###################################################
@@ -499,7 +502,7 @@ def readCommand( argv ):
                     help=default('How many episodes are training (suppresses output)'), default=0)
   parser.add_option('--frameTime', dest='frameTime', type='float',
                     help=default('Time to delay between frames; <0 means keyboard'), default=0.1)
-  parser.add_option('-c', '--catchExceptions', action='store_true', dest='catchExceptions', 
+  parser.add_option('-c', '--catchExceptions', action='store_true', dest='catchExceptions',
                     help='Turns on exception handling and timeouts during games', default=False)
   parser.add_option('--timeout', dest='timeout', type='int',
                     help=default('Maximum length of time an agent can spend computing in a single game'), default=30)
@@ -646,6 +649,104 @@ def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0
 
   return games
 
+# ------------------- Statistics --------------------------------
+Result = namedtuple(
+  'Result',
+  ['depth', 'layout', 'avg_score', 'avg_time']
+)
+
+def statRunGames(layout, pacman, ghosts, display, numGames, record, numTraining = 0, catchExceptions=False, timeout=30, agentName='ReflexAgent' ):
+  import __main__
+  __main__.__dict__['_display'] = display
+
+  rules = ClassicGameRules(timeout)
+  times = []
+  games = []
+
+  for i in range( numGames ):
+    gameDisplay = display
+    rules.quiet = True
+    game = rules.newGame(layout, pacman, ghosts, gameDisplay, True, catchExceptions)
+    game.run()
+    games.append(game)
+    times.append(funcTimer.get_avg(agentName))
+    funcTimer.reset()
+
+  return games, times
+
+def run_stats(layoutName, agentName, depth, numGames):
+  args = dict()
+
+  args['layout'] = layout.getLayout(layoutName )
+  if args['layout'] == None: raise Exception("The layout " + layoutName + " cannot be found")
+
+  pacmanType = loadAgent(agentName, True)
+  agentOpts = {'depth': depth} if depth > 1 else {}
+  pacman = pacmanType(**agentOpts) # Instantiate Pacman with agentArgs
+  args['pacman'] = pacman
+
+  # Choose a ghost agent
+  ghostType = loadAgent('RandomGhost', True)
+  args['ghosts'] = [ghostType( i+1 ) for i in range( 2 )]
+
+  import textDisplay
+  args['display'] = textDisplay.NullGraphics()
+  args['numGames'] = numGames
+  args['record'] = False
+  args['catchExceptions'] = False
+  args['timeout'] = 30
+  args['agentName'] = agentName
+
+  games, times = statRunGames(**args)
+  scores = [game.state.getScore() for game in games]
+  avg_score = sum(scores) / float(len(scores))
+  avg_time = sum(times) / float(len(times))
+  return Result(depth = depth, layout = layoutName, avg_score = avg_score, avg_time = avg_time)
+
+
+def stats_main():
+  agents = [
+    'ReflexAgent',
+    'BetterAgent',
+  ]
+  depth_agents = [
+    'MinimaxAgent',
+    'AlphaBetaAgent',
+    'RandomExpectimaxAgent',
+  ]
+
+  layouts = [
+    'capsuleClassic',
+    'contestClassic',
+    'mediumClassic',
+    'minimaxClassic',
+    'openClassic',
+    'originalClassic',
+    'smallClassic',
+    'testClassic',
+    'trappedClassic',
+    'trickyClassic',
+  ]
+
+  results = defaultdict(list)
+
+  for agent in agents:
+    for layout in layouts:
+      sys.stderr.write("running games for {} layout {}...\n".format(agent, layout))
+      results[agent].append(run_stats(layout, agent, 1, 7))
+
+  for agent in depth_agents:
+    for layout in layouts:
+      for depth in [2,3,4]:
+        sys.stderr.write("running games for {} layout {} depth {}...\n".format(agent, layout, depth))
+        results[agent].append(run_stats(layout, agent, depth, 7))
+
+  print('agent','depth','layout','avg_score','avg_time',sep=',')
+  for k, v in results.items():
+    for r in v:
+      print('{},{},{},{},{}'.format(k, r.depth, r.layout, r.avg_score, r.avg_time))
+
+
 if __name__ == '__main__':
   """
   The main function called when pacman.py is run
@@ -657,8 +758,10 @@ if __name__ == '__main__':
 
   > python pacman.py --help
   """
-  args = readCommand( sys.argv[1:] ) # Get game components based on input
-  runGames( **args )
+  # args = readCommand( sys.argv[1:] ) # Get game components based on input
+  # runGames( **args )
+
+  stats_main()
 
   # import cProfile
   # cProfile.run("runGames( **args )")
