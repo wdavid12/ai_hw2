@@ -674,7 +674,7 @@ def statRunGames(layout, pacman, ghosts, display, numGames, record, numTraining 
 
   return games, times
 
-def run_stats(layoutName, agentName, depth, numGames):
+def run_stats(layoutName, agentName, depth, numGames, ghost='RandomGhost'):
   args = dict()
 
   args['layout'] = layout.getLayout(layoutName )
@@ -686,7 +686,7 @@ def run_stats(layoutName, agentName, depth, numGames):
   args['pacman'] = pacman
 
   # Choose a ghost agent
-  ghostType = loadAgent('RandomGhost', True)
+  ghostType = loadAgent(ghost, True)
   args['ghosts'] = [ghostType( i+1 ) for i in range( 2 )]
 
   import textDisplay
@@ -715,6 +715,11 @@ def stats_main():
     'RandomExpectimaxAgent',
   ]
 
+  expectimax_agents = [
+    'RandomExpectimaxAgent',
+    'DirectionalExpectimaxAgent',
+  ]
+
   layouts = [
     'capsuleClassic',
     'contestClassic',
@@ -730,21 +735,43 @@ def stats_main():
 
   results = defaultdict(list)
 
-  for agent in agents:
-    for layout in layouts:
-      sys.stderr.write("running games for {} layout {}...\n".format(agent, layout))
-      results[agent].append(run_stats(layout, agent, 1, 7))
+  # for agent in agents:
+    # for layout in layouts:
+      # sys.stderr.write("running games for {} layout {}...\n".format(agent, layout))
+      # results[agent].append(run_stats(layout, agent, 1, 7))
 
-  for agent in depth_agents:
-    for layout in layouts:
-      for depth in [2,3,4]:
-        sys.stderr.write("running games for {} layout {} depth {}...\n".format(agent, layout, depth))
-        results[agent].append(run_stats(layout, agent, depth, 7))
+  # for agent in depth_agents:
+    # for layout in layouts:
+      # for depth in [4]:
+        # sys.stderr.write("running games for {} layout {} depth {}...\n".format(agent, layout, depth))
+        # results[agent].append(run_stats(layout, agent, depth, 5))
 
-  print('agent','depth','layout','avg_score','avg_time',sep=',')
-  for k, v in results.items():
-    for r in v:
-      print('{},{},{},{},{}'.format(k, r.depth, r.layout, r.avg_score, r.avg_time))
+  depth = 4
+  random_ghost_results = defaultdict(list)
+  direct_ghost_results = defaultdict(list)
+  for agent in expectimax_agents:
+    for layout in ['trickyClassic']:
+      ghost = 'RandomGhost'
+      sys.stderr.write("running games for {} layout {} depth {} ghost {}...\n".format(agent, layout, depth, ghost))
+      random_ghost_results[agent].append(run_stats(layout, agent, depth, 5))
+      ghost = 'DirectionalGhost'
+      sys.stderr.write("running games for {} layout {} depth {} ghost {}...\n".format(agent, layout, depth, ghost))
+      direct_ghost_results[agent].append(run_stats(layout, agent, depth, 5, ghost))
+
+  print('agent','ghost','depth','layout','avg_score','avg_time',sep=',')
+  for k in random_ghost_results:
+    random_list = random_ghost_results[k]
+    directional_list = direct_ghost_results[k]
+    for i in range(len(random_list)):
+      r = random_list[i]
+      print('{},{},{},{},{},{}'.format(k, 'RandomGhost', r.depth, r.layout, r.avg_score, r.avg_time))
+      r = directional_list[i]
+      print('{},{},{},{},{},{}'.format(k, 'DirectionalGhost', r.depth, r.layout, r.avg_score, r.avg_time))
+
+  # print('agent','depth','layout','avg_score','avg_time',sep=',')
+  # for k, v in results.items():
+    # for r in v:
+      # print('{},{},{},{},{}'.format(k, r.depth, r.layout, r.avg_score, r.avg_time))
 
 
 if __name__ == '__main__':

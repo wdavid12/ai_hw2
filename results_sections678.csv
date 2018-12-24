@@ -1,0 +1,5 @@
+agent,ghost,depth,layout,avg_score,avg_time
+RandomExpectimaxAgent,RandomGhost,4,trickyClassic,1621.4,0.7642352469215511
+RandomExpectimaxAgent,DirectionalGhost,4,trickyClassic,1926.6,0.9812631857303471
+DirectionalExpectimaxAgent,RandomGhost,4,trickyClassic,1988.6,1.1769345136806704
+DirectionalExpectimaxAgent,DirectionalGhost,4,trickyClassic,1447.6,0.7315035471668248
