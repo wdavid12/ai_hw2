@@ -1,0 +1,4 @@
+agent,depth,layout,avg_score,avg_time
+MinimaxAgent,4,trappedClassic,-226.46,0.0012858723998069763
+AlphaBetaAgent,4,trappedClassic,-213.039,0.0007793663442134857
+RandomExpectimaxAgent,4,trappedClassic,17.068,0.0009705314636230469
