@@ -1,0 +1,3 @@
+MinimaxAgent,4,minimaxClassic,359.94,0.01449623240029942
+AlphaBetaAgent,4,minimaxClassic,400.35,0.00770323347859924
+RandomExpectimaxAgent,4,minimaxClassic,394.38,0.016113059679667155
