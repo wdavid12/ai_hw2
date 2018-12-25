@@ -4,31 +4,6 @@ from game import Agent
 import ghostAgents
 import time
 
-class FuncTimer:
-  def __init__(self):
-    self.times = {}
-
-  def timed(self, name):
-    self.times[name] = []
-    def decorator(func):
-      def wrapper(*args, **kwargs):
-        begin = time.time()
-        result = func(*args, **kwargs)
-        end = time.time()
-        self.times[name].append(end-begin)
-        return result
-      return wrapper
-    return decorator
-
-  def get_avg(self, name):
-    return sum(self.times[name]) / len(self.times[name])
-
-  def reset(self):
-    for k in self.times:
-      self.times[k] = []
-
-funcTimer = FuncTimer()
-
 #     ********* Reflex agent- sections a and b *********
 class ReflexAgent(Agent):
   """
@@ -40,7 +15,6 @@ class ReflexAgent(Agent):
     self.dc = None
 
 
-  @funcTimer.timed('ReflexAgent')
   def getAction(self, gameState):
     """
     getAction chooses among the best options according to the evaluation function.
@@ -79,7 +53,6 @@ class BetterAgent(Agent):
     self.dc = None
 
 
-  @funcTimer.timed('BetterAgent')
   def getAction(self, gameState):
     """
     getAction chooses among the best options according to the evaluation function.
@@ -200,7 +173,6 @@ class MinimaxAgent(MultiAgentSearchAgent):
     else:
       return min(scores)
 
-  @funcTimer.timed('MinimaxAgent')
   def getAction(self, gameState):
     """
       Returns the minimax action from the current gameState using self.depth
@@ -284,7 +256,6 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
           return -math.inf
       return cur_min
 
-  @funcTimer.timed('AlphaBetaAgent')
   def getAction(self, gameState):
     """
       Returns the minimax action using self.depth and self.evaluationFunction
@@ -325,7 +296,6 @@ class RandomExpectimaxAgent(MultiAgentSearchAgent):
     else:
       return sum(scores)/len(scores)
 
-  @funcTimer.timed('RandomExpectimaxAgent')
   def getAction(self, gameState):
     """
       Returns the expectimax action using self.depth and self.evaluationFunction
@@ -374,7 +344,6 @@ class DirectionalExpectimaxAgent(MultiAgentSearchAgent):
       return weighted_average
 
 
-  @funcTimer.timed('DirectionalExpectimaxAgent')
   def getAction(self, gameState):
     """
       Returns the expectimax action using self.depth and self.evaluationFunction
@@ -395,20 +364,11 @@ class DirectionalExpectimaxAgent(MultiAgentSearchAgent):
 ######################################################################################
 # I: implementing competition agent
 
-class CompetitionAgent(MultiAgentSearchAgent):
-  """
-    Your competition agent
-  """
+class CompetitionAgent(AlphaBetaAgent):
+  def __init__(self, evalFn = 'betterEvaluationFunction', depth='2'):
+    super().__init__(evalFn, depth)
+    self.depth = 3
 
-  def getAction(self, gameState):
-    """
-      Returns the action using self.depth and self.evaluationFunction
-
-    """
-
-    # BEGIN_YOUR_CODE
-    raise Exception("Not implemented yet")
-    # END_YOUR_CODE
 
 
 
